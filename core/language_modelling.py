@@ -32,7 +32,7 @@ class RLLanguageModeling(nn.Module):
             input_ids=input_ids, attention_mask=attention_mask, labels=labels
         )
         base_loss, logits = output.loss, output.logits
-        uid_variance = uid_variance_fn(logits, variance_type=self.variance_type)
+        uid_variance = uid_variance_fn(logits, labels, variance_type=self.variance_type)
 
         loss = base_loss + self.beta * uid_variance
         return loss
