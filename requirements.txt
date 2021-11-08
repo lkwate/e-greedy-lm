@@ -1,0 +1,5 @@
+torch
+loguru
+black
+transformers
+tqdm

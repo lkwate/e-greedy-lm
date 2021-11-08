@@ -2,6 +2,7 @@ from transformers import AutoTokenizer
 import pandas as pd
 import torch
 from tqdm import tqdm
+import loguru
 
 
 def create_action(
@@ -64,8 +65,28 @@ def epsilon_greedy_transform_label(
     return transformed_labels
 
 
-def uid_variance_fn(logits: torch.Tensor, variance_type="local"):
-    logits = torch.nn.LogSoftmax()(logits)
+def uid_variance_fn(
+    logits: torch.Tensor, labels: torch.Tensor, variance_type: int = "local"
+):
+    uid = labels.clone()
+    mask = uid != -100
+    label_index = mask.nonzero(as_tuple=True)
+    logits_index = label_index + (uid[label_index],)
+    uid[label_index] = logits[logits_index]
+    uid_corrected = torch.where(uid == -100, 0, uid)
+    scale = mask.sum(dim=-1)
 
-    variance = None
-    return variance
+    if variance_type == "local":
+        var = uid_corrected[:, :-1] - uid_corrected[:, 1:]
+        var = var ** 2
+        var = var.sum(dim=-1) / scale
+    else:
+        means = uid_corrected.sum(dim=-1) / scale
+        means = means.unsqueeze(-1)
+        var = uid_corrected - means
+        var = var ** 2
+        var = var * mask
+        var = var.sum(dim=-1) / scale
+
+    var = var.mean()
+    return var

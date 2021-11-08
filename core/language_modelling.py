@@ -8,11 +8,11 @@ class RLLanguageModeling(nn.Module):
     def __init__(
         self,
         model,
-        action_table: torch.Tensor,
+        action_table: torch.LongTensor,
         tokenizer: AutoTokenizer,
         k: int = 10,
         epsilon: int = 0.1,
-        beta: int = 0.01,
+        beta: int = 0.06,
         variance_type: str = "local",
     ):
         super(RLLanguageModeling, self).__init__()
