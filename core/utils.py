@@ -16,26 +16,30 @@ def create_action(
     factor: int = 10,
     name: bool = True,
 ):
-    output = []
+    out = []
     topk = k * factor
-    for idx in tqdm(range(embedding.shape[0])):
-        corr = torch.matmul(embedding, embedding[idx, :].reshape(-1, 1)).reshape(-1)
+    for _, index in tqdm(tokenizer.get_vocab().items()):
+        corr = torch.matmul(
+            embedding,
+            embedding[index, :].reshape(
+                -1,
+                1,
+            ),
+        ).reshape(-1)
         related_tokens = corr.topk(topk)[-1].tolist()
         related_tokens = {
-            tokenizer.decode(token).lower().strip(): True for token in related_tokens
+            tokenizer.decode(token).lower().strip(): 1 for token in related_tokens
         }
-
         if name:
             related_tokens = [token for token in list(related_tokens.keys())[:10]]
         else:
             related_tokens = [
                 tokenizer.encode(token)[1] for token in list(related_tokens.keys())[:10]
             ]
-        token = tokenizer.decode(idx)
-        output.append((idx, token, related_tokens))
+    out.append((str(related_tokens)))
 
-    output = pd.DataFrame(data=output, columns=["index", "token", "close tokens"])
-    output.to_csv(output_file, index=False)
+    out = pd.DataFrame(data=out, columns=["close tokens"])
+    out.to_csv(output_file, index=False)
 
 
 def epsilon_greedy_transform_label(
