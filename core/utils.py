@@ -1,8 +1,11 @@
 from transformers import AutoTokenizer
 import pandas as pd
 import torch
+import torch.optim as optim
 from tqdm import tqdm
 import loguru
+
+OPTIMIZER_DIC = {"Adam": optim.Adam}
 
 
 def create_action(
@@ -67,7 +70,7 @@ def epsilon_greedy_transform_label(
 
 def uid_variance_fn(
     logits: torch.Tensor, labels: torch.Tensor, variance_type: int = "local"
-):
+) -> torch.FloatTensor:
     uid = labels.clone()
     mask = uid != -100
     label_index = mask.nonzero(as_tuple=True)
@@ -90,3 +93,15 @@ def uid_variance_fn(
 
     var = var.mean()
     return var
+
+
+def build_action_table(input_file: str) -> torch.LongTensor:
+    actions = pd.read_csv(input_file)
+    k = len(eval(actions.iloc[0]["close tokens"]))
+    table = torch.zeros((len(actions), k))
+
+    for _, row in actions.iterrows():
+        row = eval(row["close tokens"])
+        idx = row[0]
+        table[idx] = torch.LongTensor(row)
+    return table
