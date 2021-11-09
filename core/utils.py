@@ -63,7 +63,7 @@ def epsilon_greedy_transform_label(
     replace_token_indices = labels[replace_indices]
 
     next_action_indices = (
-        torch.randint(0, k, replace_token_indices.shape).to(labels).long()
+        torch.randint(0, k, replace_token_indices.shape).to(labels.device).long()
     )
     next_action_token_indices = action[replace_token_indices, next_action_indices]
     transformed_labels[replace_indices] = next_action_token_indices

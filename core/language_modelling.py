@@ -24,7 +24,7 @@ class RLLMLightningModule(pl.LightningModule):
         self.model = model
         self.epsilon = epsilon
         self.beta = beta
-        self.action_table = action_table
+        self.action_table = action_table.to(self.device)
         self.tokenizer = tokenizer
         self.k = k
         self.variance_type = variance_type
