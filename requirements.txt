@@ -1,5 +1,7 @@
 torch
 loguru
 black
-transformers
+git+https://github.com/huggingface/transformers
 tqdm
+pytorch_lightning
+datasets
