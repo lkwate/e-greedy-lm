@@ -7,7 +7,7 @@ from loguru import logger
 from typing import List, Union, Dict
 
 
-class MultiNewsLightningDataModule(pl.LightningModule):
+class MultiNewsLightningDataModule(pl.LightningDataModule):
     def __init__(
         self,
         tokenizer: AutoTokenizer,
@@ -21,15 +21,13 @@ class MultiNewsLightningDataModule(pl.LightningModule):
         self.num_workers = num_workers
         self.max_length = max_length
         self.data_collator = DataCollatorForSeq2Seq(
-            self.tokenizer, max_length=self.max_length, paddind="max_length"
+            self.tokenizer, max_length=self.max_length, padding="max_length"
         )
-
-        self.prepare_data()
 
     def prepare_data(self):
         logger.info("Multi_news dataset loading....")
         self.dataset = datasets.load_dataset("multi_news")
-        logger("Loading of multi_news datasets completed.")
+        logger.info("Loading of multi_news datasets completed.")
         self.train, self.validation, self.test = (
             self.dataset["train"],
             self.dataset["validation"],
@@ -43,17 +41,17 @@ class MultiNewsLightningDataModule(pl.LightningModule):
         ]
 
         logger.info("Training data transformation...")
-        self.train.map(self._transform, batched=True)
+        self.train = self.train.map(self._transform, batched=True)
         self.train.set_format(type="torch", columns=self.columns)
         logger.info("Training data transformation completed.")
 
         logger.info("Validation data transformation...")
-        self.validation.map(self._transform, batched=True)
+        self.validation = self.validation.map(self._transform, batched=True)
         self.validation.set_format(type="torch", columns=self.columns)
         logger.info("Validation data transformation completed.")
 
         logger.info("Testing data transformation...")
-        self.test.map(self._transform, batched=True)
+        self.test = self.test.map(self._transform, batched=True)
         self.test.set_format(type="torch", columns=self.columns)
         logger.info("Testing data transformation completed.")
 

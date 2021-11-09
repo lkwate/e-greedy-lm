@@ -1,9 +1,7 @@
 import torch
-from torch import optim
-from torch.optim import optimizer
+import torch.optim as optim
 from transformers import AutoTokenizer
 from utils import epsilon_greedy_transform_label, uid_variance_fn, OPTIMIZER_DIC
-import torch.nn as nn
 import pytorch_lightning as pl
 
 
@@ -13,14 +11,14 @@ class RLLMLightningModule(pl.LightningModule):
         model,
         action_table: torch.LongTensor,
         tokenizer: AutoTokenizer,
-        learning_rate: float = 1e-5,
-        k: int = 10,
-        epsilon: int = 0.2,
-        beta: int = 0.06,
-        variance_type: str = "local",
-        lr_factor: float = 0.1,
-        lr_patience: int = 5,
-        optimizer_name: str = "Adam",
+        learning_rate: float,
+        k: int,
+        epsilon: int,
+        beta: int,
+        variance_type: str,
+        lr_factor: float,
+        lr_patience: int,
+        optimizer_name: str,
     ):
         super(RLLMLightningModule, self).__init__()
         self.model = model
@@ -49,12 +47,15 @@ class RLLMLightningModule(pl.LightningModule):
         }
         return output
 
-    def _compute_loss(self, input_ids, attention_mask, labels):
+    def _compute_loss(self, input_ids, attention_mask, decoder_attention_mask, labels):
         labels = epsilon_greedy_transform_label(
             labels, self.action_table, self.tokenizer, epsilon=self.epsilon
         )
         output = self.model(
-            input_ids=input_ids, attention_mask=attention_mask, labels=labels
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            decoder_attention_mask=decoder_attention_mask,
+            labels=labels,
         )
         loss, logits = output.loss, output.logits
         uid_variance = uid_variance_fn(logits, labels, variance_type=self.variance_type)
@@ -64,17 +65,34 @@ class RLLMLightningModule(pl.LightningModule):
 
         return loss, output
 
+    def _unpack_batch(self, batch):
+        input_ids, attention_mask, decoder_attention_mask, labels = (
+            batch["input_ids"],
+            batch["attention_mask"],
+            batch["decoder_attention_mask"],
+            batch["labels"],
+        )
+        return input_ids, attention_mask, decoder_attention_mask, labels
+
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch[0], batch[1], batch[2]
-        loss, output = self._compute_loss(input_ids, attention_mask, labels)
+        input_ids, attention_mask, decoder_attention_mask, labels = self._unpack_batch(
+            batch
+        )
+        loss, output = self._compute_loss(
+            input_ids, attention_mask, decoder_attention_mask, labels
+        )
         output["train_loss"] = loss
         self.log_dict(output, prog_bar=True)
 
         return output
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, labels = batch[0], batch[1], batch[2]
-        loss, output = self._compute_loss(input_ids, attention_mask, labels)
+        input_ids, attention_mask, decoder_attention_mask, labels = self._unpack_batch(
+            batch
+        )
+        loss, output = self._compute_loss(
+            input_ids, attention_mask, decoder_attention_mask, labels
+        )
         output["val_loss"] = loss
         self.log_dict(output, prog_bar=True)
 
