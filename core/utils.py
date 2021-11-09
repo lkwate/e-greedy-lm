@@ -49,7 +49,7 @@ def epsilon_greedy_transform_label(
     epsilon: float = 0.1,
 ):
     transformed_labels = labels.clone()
-    probability_matrix = torch.full(labels.shape, epsilon).to(labels)
+    probability_matrix = torch.full(labels.shape, epsilon).to(labels.device)
     probability_matrix = torch.bernoulli(probability_matrix).bool()
 
     special_token_mask = (
