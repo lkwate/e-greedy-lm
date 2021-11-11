@@ -103,7 +103,8 @@ def action_table_from_file(input_file: str, k: int) -> torch.LongTensor:
     actions = pd.read_csv(input_file)
     table = torch.zeros((len(actions), k)).long()
 
-    for _, row in tqdm(actions.iterrows()):
+    for idx in tqdm(range(len(actions))):
+        row = actions.iloc[idx]
         row = eval(row["close tokens"])
         idx = row[0]
         if len(row) > k:
