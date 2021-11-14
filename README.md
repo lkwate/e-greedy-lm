@@ -9,3 +9,15 @@ Construction of the table of actions using the embedding layer of Roberta-Base
 python3 core/action.py roberta-base core/local_actions/local_action_index.csv --name=index
 python3 core/action.py roberta-base core/local_actions/local_action_name.csv --name=name
 ```
+
+## Question generation
+Training the LM on question generation using the dataset **SQuAD**
+```sh
+bash train-launcher-question-generation.sh
+```
+
+## Text summarization
+Training the LM on text summarization using the dataset **Multi News**
+```sh
+bash train-launcher-question-generation.sh
+```
