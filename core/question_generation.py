@@ -33,6 +33,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 @click.option("--val_check_interval", type=float, default=0.25)
 @click.option("--accumulate_grad_batches", type=int, default=1)
 @click.option("--save_top_k", type=int, default=5)
+@click.option("--strategy", type=str, default="ddp_spawn", help="ddp, ddp_spawn ...")
+@click.option("--random_seed", type=int, default=2021)
 def main(
     model_name: str,
     action_table_file: str,
@@ -53,7 +55,11 @@ def main(
     val_check_interval: float,
     accumulate_grad_batches: int,
     save_top_k: int,
+    strategy : str,
+    random_seed : int
 ):
+    pl.seed_everything(random_seed, workers=True)
+    
     logger.info("Actions table creation...")
     action_table = action_table_from_file(action_table_file, k)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -88,6 +94,7 @@ def main(
         "default_root_dir": log_dir,
         "val_check_interval": val_check_interval,
         "accumulate_grad_batches": accumulate_grad_batches,
+        "strategy": strategy
     }
 
     if torch.cuda.is_available():
