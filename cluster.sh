@@ -10,18 +10,20 @@ module load cuda/10.1
 source ../KABROLG_env/bin/activate
 
 # Question Generation
-filename=train-launcher-question-generation.sh
+filename=train-launcher.sh
 # Text Summarization
 #filename=train-launcher-text-summarization.sh
 
 chmod +x $filename
 #cat $filename | tr -d '\r' > $filename.new && rm $filename && mv $filename.new $filename 
 
-if [ $filename="train-launcher-question-generation.sh" ]; then
-    . train-launcher-question-generation.sh
-elif [ $filename="train-launcher-text-summarization.sh" ]; then
-    . train-launcher-text-summarization.sh
-fi
+. $filename
+
+# if [ $filename="train-launcher-question-generation.sh" ]; then
+#     . train-launcher-question-generation.sh
+# elif [ $filename="train-launcher-text-summarization.sh" ]; then
+#     . train-launcher-text-summarization.sh
+# fi
 
 """
 ############## README : Before runing this file on the cluster #################

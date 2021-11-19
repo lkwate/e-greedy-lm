@@ -3,19 +3,24 @@ from transformers import EncoderDecoderModel, AutoTokenizer
 import click
 from loguru import logger
 import torch
-from language_modelling import RLLMLightningModule
-from dataset import MultiNewsLightningDataModule
-from utils import action_table_from_file
+from .language_modelling import RLLMLightningModule
+from .dataset import *
+from .utils import action_table_from_file
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import os
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+DATASET_DIC = {
+    "squad": SQuADLightningDataModule,
+    "multi_news": MultiNewsLightningDataModule,
+}
 
 
 @click.command()
 @click.argument("model_name", type=str)
-@click.argument("action_table_file", type=click.Path())
+@click.argument("action_table_file", type=click.Path(exists=True))
+@click.argument("dataset_name", type=str)
 @click.argument("log_dir", type=click.Path())
 @click.option("--batch_size", type=int, default=32)
 @click.option("--num_workers", type=int, default=4)
@@ -33,11 +38,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 @click.option("--val_check_interval", type=float, default=0.25)
 @click.option("--accumulate_grad_batches", type=int, default=1)
 @click.option("--save_top_k", type=int, default=5)
-@click.option("--strategy", type=str, default="ddp_spawn", help="ddp, ddp_spawn ...")
+@click.option("--strategy", type=str, default="ddp", help="ddp, ddp_spawn ...")
 @click.option("--random_seed", type=int, default=2021)
 def main(
     model_name: str,
     action_table_file: str,
+    dataset_name: str,
     log_dir: str,
     batch_size: int,
     num_workers: int,
@@ -55,17 +61,20 @@ def main(
     val_check_interval: float,
     accumulate_grad_batches: int,
     save_top_k: int,
-    strategy : str,
-    random_seed : int
+    strategy: str,
+    random_seed: int,
 ):
     pl.seed_everything(random_seed, workers=True)
-    
+
     logger.info("Actions table creation...")
     action_table = action_table_from_file(action_table_file, k)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    logger.info("Multi news lightning data module creation...")
-    pl_data_module = MultiNewsLightningDataModule(
+    if dataset_name not in DATASET_DIC:
+        logger.error(f"Dataset {dataset_name} not available")
+
+    logger.info(f"{dataset_name} lightning data module creation...")
+    pl_data_module = DATASET_DIC[dataset_name](
         tokenizer, batch_size, num_workers, max_length
     )
 
@@ -94,7 +103,7 @@ def main(
         "default_root_dir": log_dir,
         "val_check_interval": val_check_interval,
         "accumulate_grad_batches": accumulate_grad_batches,
-        "strategy": strategy
+        "strategy": strategy,
     }
     if torch.cuda.is_available():
         trainer_config["gpus"] = -1

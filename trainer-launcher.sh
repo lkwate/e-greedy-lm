@@ -6,11 +6,13 @@ action_table_file="core/local_actions/local_action_index.csv"
 log_dir="log_files"
 batch_size=32
 #strategy="ddp"
-strategy="ddp_spawn"
+strategy="ddp"
+dataset_name="squad"
 
-python3 core/question_generation.py \
+python3 -m core.trainer \
 		$model_name \
 		$action_table_file \
+        $dataset_name \
 		$log_dir \
 		--batch_size $batch_size \
 		--num_workers 4 \

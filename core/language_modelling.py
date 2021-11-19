@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
 from transformers import AutoTokenizer
-from utils import epsilon_greedy_transform_label, uid_variance_fn, OPTIMIZER_DIC
+from .utils import epsilon_greedy_transform_label, uid_variance_fn, OPTIMIZER_DIC
 import pytorch_lightning as pl
 
 
@@ -32,6 +32,7 @@ class RLLMLightningModule(pl.LightningModule):
         self.lr_factor = lr_factor
         self.lr_patience = lr_patience
         self.optimizer_name = optimizer_name
+        self.decoder_start_token_id = self.model.config.decoder.pad_token_id
 
     def configure_optimizers(self):
         optimizer = OPTIMIZER_DIC[self.optimizer_name](
@@ -97,3 +98,8 @@ class RLLMLightningModule(pl.LightningModule):
         self.log_dict(output, prog_bar=True)
 
         return output
+
+    def generate(self, input_ids):
+        return self.model.generate(
+            input_ids, decoder_start_token_id=self.decoder_start_token_id
+        )
