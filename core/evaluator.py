@@ -1,5 +1,10 @@
 import pytorch_lightning as pl
-from transformers import EncoderDecoderModel, AutoTokenizer, AutoModel, AutoModelForCausalLM
+from transformers import (
+    EncoderDecoderModel,
+    AutoTokenizer,
+    AutoModel,
+    AutoModelForCausalLM,
+)
 import click
 from loguru import logger
 import torch
@@ -15,6 +20,7 @@ DATASET_DIC = {
     "squad": SQuADLightningDataModule,
     "multi_news": MultiNewsLightningDataModule,
 }
+
 
 @click.command()
 @click.argument("model_name", type=str)
@@ -33,7 +39,7 @@ DATASET_DIC = {
 @click.option("--optimizer_name", type=str, default="Adam")
 @click.option("--checkpoint_path", type=click.Path(exists=True))
 @click.option("--output_file", type=click.Path(exists=False))
-@click.option("--split", type=click.Choice(['train', 'eval', 'test']), default="eval")
+@click.option("--split", type=click.Choice(["train", "eval", "test"]), default="eval")
 @click.option("--limit_batches", type=int, default=-1)
 def main(
     model_name: str,
@@ -50,10 +56,10 @@ def main(
     lr_factor: float,
     lr_patience: int,
     optimizer_name: str,
-    checkpoint_path : str,
-    output_file : str,
-    split : str,
-    limit_batches : int
+    checkpoint_path: str,
+    output_file: str,
+    split: str,
+    limit_batches: int,
 ):
 
     logger.info("Actions table creation...")
@@ -68,11 +74,11 @@ def main(
         tokenizer, batch_size, num_workers, max_length
     )
     pl_data_module.prepare_data()
-    if split == 'train' :
+    if split == "train":
         data_module = pl_data_module.train_dataloader()
-    elif split == 'eval' :
+    elif split == "eval":
         data_module = pl_data_module.val_dataloader()
-    elif split == 'test' :
+    elif split == "test":
         data_module = pl_data_module.test_dataloader()
 
     logger.info("Sequence-2-Sequence model building...")
@@ -83,39 +89,48 @@ def main(
 
     pl_model = RLLMLightningModule.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
-        model = model,
-        action_table = action_table,
-        tokenizer = tokenizer,
-        learning_rate = learning_rate,
-        k = k,
-        epsilon = epsilon,
-        beta = beta,
-        variance_type = variance_type,
-        lr_factor = lr_factor,
-        lr_patience = lr_patience,
-        optimizer_name = optimizer_name,
+        model=model,
+        action_table=action_table,
+        tokenizer=tokenizer,
+        learning_rate=learning_rate,
+        k=k,
+        epsilon=epsilon,
+        beta=beta,
+        variance_type=variance_type,
+        lr_factor=lr_factor,
+        lr_patience=lr_patience,
+        optimizer_name=optimizer_name,
     )
     pl_model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pl_model = pl_model.to(device)
 
     logger.info("Start the evaluation...")
     limit_batches = float("inf") if limit_batches == -1 else limit_batches
-    with torch.no_grad(): 
-        with open(output_file, "w") as of :
+    with torch.no_grad():
+        with open(output_file, "w") as of:
             n_batches = 0
-            for batch in tqdm.tqdm(data_module, desc="Save in %s ..."%output_file) :
+            for batch in tqdm.tqdm(data_module, desc="Save in %s ..." % output_file):
                 # batch["input_ids"], batch["attention_mask"], batch["labels"], batch["decoder_attention_mask"]
                 x = batch["input_ids"].to(device)
                 y = pl_model.generate(x)
-                for x_i, y_i in zip(x, y) :
-                    of.writelines([
-                        "input : %s\n"%tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(x_i)), 
-                        "output : %s\n\n"%tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(y_i))
-                    ])
-                n_batches+=1
-                if n_batches > limit_batches :
+                for x_i, y_i in zip(x, y):
+                    of.writelines(
+                        [
+                            "input : %s\n"
+                            % tokenizer.convert_tokens_to_string(
+                                tokenizer.convert_ids_to_tokens(x_i)
+                            ),
+                            "output : %s\n\n"
+                            % tokenizer.convert_tokens_to_string(
+                                tokenizer.convert_ids_to_tokens(y_i)
+                            ),
+                        ]
+                    )
+                n_batches += 1
+                if n_batches > limit_batches:
                     break
+
 
 if __name__ == "__main__":
     main()

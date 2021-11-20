@@ -141,14 +141,16 @@ class SQuADLightningDataModule(pl.LightningDataModule):
         self.collate_fn = partial(_collate_fn, data_collator=self.data_collator)
 
     def _transform(self, item):
-        context, question, answer = (
+        context, question, answers = (
             item["context"],
             item["question"],
-            map(lambda x: x["text"][0], item["answers"]),
+            list(map(lambda x: x["text"][0], item["answers"])),
         )
-        input_text = [a + self.tokenizer.cls_token + c for a, c in zip(context, answer)]
+        input_text = [
+            a + self.tokenizer.cls_token + c for a, c in zip(answers, context)
+        ]
         context = self.tokenizer(input_text, truncation=True, padding="max_length")
-        question = self.tokenizer(question, truncation=True, padding="max_length")
+        question = self.tokenizer(question, truncation=False, padding="max_length")
 
         output = {
             "input_ids": context["input_ids"],

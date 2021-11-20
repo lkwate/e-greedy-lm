@@ -1,5 +1,10 @@
 import pytorch_lightning as pl
-from transformers import EncoderDecoderModel, AutoTokenizer, AutoModel, AutoModelForCausalLM
+from transformers import (
+    EncoderDecoderModel,
+    AutoTokenizer,
+    AutoModel,
+    AutoModelForCausalLM,
+)
 import click
 from loguru import logger
 import torch
@@ -15,6 +20,7 @@ DATASET_DIC = {
     "squad": SQuADLightningDataModule,
     "multi_news": MultiNewsLightningDataModule,
 }
+
 
 @click.command()
 @click.argument("model_name", type=str)
