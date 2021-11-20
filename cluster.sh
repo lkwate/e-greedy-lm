@@ -9,55 +9,49 @@
 module load cuda/10.1
 source ../KABROLG_env/bin/activate
 
-# Question Generation
+# Train
 filename=train-launcher.sh
-# Text Summarization
-#filename=train-launcher-text-summarization.sh
+# Eval
+#filename=evaluator-launcher.sh
 
 chmod +x $filename
 #cat $filename | tr -d '\r' > $filename.new && rm $filename && mv $filename.new $filename 
 
 . $filename
 
-# if [ $filename="train-launcher-question-generation.sh" ]; then
-#     . train-launcher-question-generation.sh
-# elif [ $filename="train-launcher-text-summarization.sh" ]; then
-#     . train-launcher-text-summarization.sh
-# fi
+# """
+# ############## README : Before runing this file on the cluster #################
 
-"""
-############## README : Before runing this file on the cluster #################
+# module load python/3.7
+# virtualenv KABROLG_env
+# source KABROLG_env/bin/activate
+# pip install --upgrade pip
 
-module load python/3.7
-virtualenv KABROLG_env
-source KABROLG_env/bin/activate
-pip install --upgrade pip
+# git clone https://github.com/lkwate/KABROLG
+# cd KABROLG
+# pip install -r requirements.txt
+# ### for `import pytorch_lightning as pl` issues
+# pip3 install packaging
+# pip install importlib-metadata
+# pip install transformers -U
+# ### for `from language_modelling import RLLMLightningModule` issues
+# pip3 install python-dateutil
+# pip uninstall attr
+# pip install attrs
 
-git clone https://github.com/lkwate/KABROLG
-cd KABROLG
-pip install -r requirements.txt
-### for `import pytorch_lightning as pl` issues
-pip3 install packaging
-pip install importlib-metadata
-pip install transformers -U
-### for `from language_modelling import RLLMLightningModule` issues
-pip3 install python-dateutil
-pip uninstall attr
-pip install attrs
+# tmux
 
-tmux
+# #nano train-launcher-question-generation.sh
+# #nano train-launcher-text-summarization.sh
 
-#nano train-launcher-question-generation.sh
-#nano train-launcher-text-summarization.sh
+# chmod +x cluster.sh
 
-chmod +x cluster.sh
-
-#
-salloc --gres=gpu:2 -c 4 --mem=32Gb --time=12:00:00 --partition=main --job-name=KABROLG
-. cluster.sh
-# or 
-srun --gres=gpu:2 -c 4 --mem=32Gb --time=12:00:00 --partition=main --job-name=KABROLG . cluster.sh
-# or (see SBATCH parameters at the beginning of the file)
-sbatch . cluster.sh
-#
-"""
+# #
+# salloc --gres=gpu:2 -c 4 --mem=32Gb --time=12:00:00 --partition=main --job-name=KABROLG
+# . cluster.sh
+# # or 
+# srun --gres=gpu:2 -c 4 --mem=32Gb --time=12:00:00 --partition=main --job-name=KABROLG . cluster.sh
+# # or (see SBATCH parameters at the beginning of the file)
+# sbatch . cluster.sh
+# #
+# """
