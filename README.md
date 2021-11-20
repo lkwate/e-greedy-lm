@@ -10,14 +10,13 @@ python3 core/action.py roberta-base core/local_actions/local_action_index.csv --
 python3 core/action.py roberta-base core/local_actions/local_action_name.csv --name=name
 ```
 
-## Question generation
-Training the LM on question generation using the dataset **SQuAD**
+## Training 
+Training the LM on question generation (using the dataset **SQuAD**) or text summarization (using the dataset **Multi News**)
 ```sh
-bash train-launcher-question-generation.sh
+bash trainer-launcher.sh
 ```
 
-## Text summarization
-Training the LM on text summarization using the dataset **Multi News**
+## Generate sentences
 ```sh
-bash train-launcher-question-generation.sh
+bash evaluator-launcher.sh
 ```

@@ -2,8 +2,6 @@
 
 model_name="roberta-base"
 action_table_file="core/local_actions/local_action_index.csv"
-#log_dir="../log_files"
-log_dir="log_files"
 batch_size=32
 #strategy="ddp_spawn"
 strategy="ddp"
@@ -12,11 +10,17 @@ dataset_name="squad"
 ### Text Summarization
 #dataset_name="multi_news"
 
-python3 -m core.trainer \
+#log_dir="../log_files"
+log_dir="log_files"
+checkpoint_path=${log_dir}/epoch=1-val_loss=13.7270.ckpt
+output_file=${log_dir}/"eval.txt"
+split="eval"
+limit_batches=-1
+
+python3 -m core.evaluator \
 		$model_name \
 		$action_table_file \
 		$dataset_name \
-		$log_dir \
 		--batch_size $batch_size \
 		--num_workers 4 \
 		--max_length 512 \
@@ -27,11 +31,8 @@ python3 -m core.trainer \
 		--variance_type local \
 		--lr_factor 0.1 \
 		--lr_patience 4 \
-		--early_stopping_patience 5 \
 		--optimizer_name Adam \
-		--max_epochs 10 \
-		--val_check_interval 0.25 \
-		--accumulate_grad_batches 1 \
-		--save_top_k 5 \
-		--strategy $strategy \
-		--random_seed 2021
+		--checkpoint_path $checkpoint_path \
+		--output_file $output_file \
+		--split $split \
+		--limit_batches $limit_batches

@@ -16,7 +16,6 @@ DATASET_DIC = {
     "multi_news": MultiNewsLightningDataModule,
 }
 
-
 @click.command()
 @click.argument("model_name", type=str)
 @click.argument("action_table_file", type=click.Path(exists=True))
