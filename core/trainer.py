@@ -79,7 +79,7 @@ def main(
 
     logger.info("Sequence-2-Sequence model building...")
     encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(model_name)
+    decoder = AutoModelForCausalLM.from_pretrained(model_name, is_decoder=True)
     model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
 
     pl_model = RLLMLightningModule(
