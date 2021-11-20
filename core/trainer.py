@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from transformers import EncoderDecoderModel, AutoTokenizer
+from transformers import EncoderDecoderModel, AutoTokenizer, AutoModel, AutoModelForCausalLM
 import click
 from loguru import logger
 import torch
@@ -79,10 +79,9 @@ def main(
     )
 
     logger.info("Sequence-2-Sequence model building...")
-    model = EncoderDecoderModel.from_encoder_decoder_pretrained(model_name, model_name)
-    model.config.decoder_start_token_id = tokenizer.cls_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
-    model.config.vocab_size = model.config.decoder.vocab_size
+    encoder = AutoModel.from_pretrained(model_name)
+    decoder = AutoModelForCausalLM.from_pretrained(model_name)
+    model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
 
     pl_model = RLLMLightningModule(
         model,
