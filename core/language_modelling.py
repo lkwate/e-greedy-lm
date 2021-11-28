@@ -19,6 +19,7 @@ class RLLMLightningModule(pl.LightningModule):
         lr_factor: float,
         lr_patience: int,
         optimizer_name: str,
+        add_variance: bool,
     ):
         super(RLLMLightningModule, self).__init__()
         self.model = model
@@ -33,6 +34,13 @@ class RLLMLightningModule(pl.LightningModule):
         self.lr_patience = lr_patience
         self.optimizer_name = optimizer_name
         self.decoder_start_token_id = self.model.config.decoder.pad_token_id
+        self.add_variance = add_variance
+
+        self.output_transform = (
+            self._add_uid_variance_fn
+            if self.add_variance
+            else self._skip_uid_variance_fn
+        )
 
     def configure_optimizers(self):
         optimizer = OPTIMIZER_DIC[self.optimizer_name](
@@ -48,6 +56,16 @@ class RLLMLightningModule(pl.LightningModule):
         }
         return output
 
+    def _add_uid_variance_fn(self, loss, logits, labels, variance_type):
+        uid_variance = uid_variance_fn(logits, labels, variance_type=variance_type)
+        output = {"likelihood": loss, "uid_variance": uid_variance}
+        loss = loss + self.beta * uid_variance
+
+        return loss, output
+
+    def _skip_uid_variance_fn(self, loss, logits, labels, variance_type):
+        return loss, {}
+
     def _compute_loss(self, input_ids, attention_mask, decoder_attention_mask, labels):
         labels = epsilon_greedy_transform_label(
             labels, self.action_table, self.tokenizer, epsilon=self.epsilon
@@ -59,19 +77,17 @@ class RLLMLightningModule(pl.LightningModule):
             labels=labels,
         )
         loss, logits = output.loss, output.logits
-        uid_variance = uid_variance_fn(logits, labels, variance_type=self.variance_type)
 
-        output = {"likelihood": loss, "uid_variance": uid_variance}
-        loss = loss + self.beta * uid_variance
-
-        return loss, output
+        return self.output_transform(
+            loss, logits, labels, variance_type=self.variance_type
+        )
 
     def _unpack_batch(self, batch):
         input_ids, attention_mask, decoder_attention_mask, labels = (
-            batch["input_ids"],
-            batch["attention_mask"],
+            batch["encoder_input_ids"],
+            batch["encoder_attention_mask"],
             batch["decoder_attention_mask"],
-            batch["labels"],
+            batch["decoder_input_ids"],
         )
         return input_ids, attention_mask, decoder_attention_mask, labels
 

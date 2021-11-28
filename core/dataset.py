@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, DataCollatorForSeq2Seq
+from transformers import AutoTokenizer, DataCollatorWithPadding
 import torch
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -8,27 +8,37 @@ from typing import List, Union, Dict
 from functools import partial
 
 
-def _collate_fn(features, data_collator):
-    if isinstance(features, list):
-        features = [
-            {key: value.tolist() for key, value in feature.items()}
-            for feature in features
-        ]
-    elif isinstance(features, dict):
-        features = {key: value.tolist() for key, value in features.items()}
-    else:
-        raise ValueError("features should be of type either list of dictionary")
+def _collate_fn(features, data_collator: DataCollatorWithPadding):
+    encoder_features = [
+        {
+            key[len("encoder_") :]: value
+            for key, value in feat.items()
+            if key.startswith("encoder_")
+        }
+        for feat in features
+    ]
+    decoder_features = [
+        {
+            key[len("decoder_") :]: value
+            for key, value in feat.items()
+            if key.startswith("decoder_")
+        }
+        for feat in features
+    ]
 
-    features = data_collator(features)
+    encoder_features = data_collator(encoder_features)
+    decoder_features = data_collator(decoder_features)
 
-    if "labels" in features:
-        features["labels"] = torch.where(
-            features["labels"] == 1,
-            data_collator.label_pad_token_id,
-            features["labels"],
-        )
-
-    return features
+    decoder_features["input_ids"] = torch.where(
+        decoder_features["input_ids"] == data_collator.tokenizer.pad_token_id,
+        -100,
+        decoder_features["input_ids"],
+    )
+    batch = {
+        **{"encoder_" + key: value for key, value in encoder_features.items()},
+        **{"decoder_" + key: value for key, value in decoder_features.items()},
+    }
+    return batch
 
 
 class MultiNewsLightningDataModule(pl.LightningDataModule):
@@ -44,9 +54,7 @@ class MultiNewsLightningDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.max_length = max_length
-        self.data_collator = DataCollatorForSeq2Seq(
-            self.tokenizer, max_length=self.max_length, padding="max_length"
-        )
+        self.data_collator = DataCollatorWithPadding(self.tokenizer)
         self.collate_fn = partial(_collate_fn, data_collator=self.data_collator)
 
     def prepare_data(self):
@@ -59,36 +67,31 @@ class MultiNewsLightningDataModule(pl.LightningDataModule):
             self.dataset["test"],
         )
         self.columns = [
-            "input_ids",
-            "attention_mask",
+            "encoder_input_ids",
+            "encoder_attention_mask",
+            "decoder_input_ids",
             "decoder_attention_mask",
-            "labels",
         ]
+        self.train = self._data_processing(self.train, "Training")
+        self.validation = self._data_processing(self.validation, "Validation")
+        self.test = self._data_processing(self.test, "Testing")
 
-        logger.info("Training data transformation...")
-        self.train = self.train.map(self._transform, batched=True)
-        self.train.set_format(type="torch", columns=self.columns)
-        logger.info("Training data transformation completed.")
-
-        logger.info("Validation data transformation...")
-        self.validation = self.validation.map(self._transform, batched=True)
-        self.validation.set_format(type="torch", columns=self.columns)
-        logger.info("Validation data transformation completed.")
-
-        logger.info("Testing data transformation...")
-        self.test = self.test.map(self._transform, batched=True)
-        self.test.set_format(type="torch", columns=self.columns)
-        logger.info("Testing data transformation completed.")
+    def _data_processing(self, dataset: datasets.arrow_dataset.Dataset, name: str):
+        logger.info(f"{name} data transformation...")
+        dataset = dataset.map(self._transform)
+        dataset.set_format(type="torch", columns=self.columns)
+        logger.info(f"{name} data transformation completed.")
+        return dataset
 
     def _transform(self, item):
         doc, summary = item["document"], item["summary"]
-        doc_output = self.tokenizer(doc, truncation=True, padding="max_length")
-        summary_output = self.tokenizer(summary, truncation=True, padding="max_length")
+        doc_output = self.tokenizer(doc, truncation=True)
+        summary_output = self.tokenizer(summary, truncation=True)
 
         output = {
-            "input_ids": doc_output["input_ids"],
-            "attention_mask": doc_output["attention_mask"],
-            "labels": summary_output["input_ids"],
+            "encoder_input_ids": doc_output["input_ids"],
+            "encoder_attention_mask": doc_output["attention_mask"],
+            "decoder_input_ids": summary_output["input_ids"],
             "decoder_attention_mask": summary_output["attention_mask"],
         }
 
@@ -135,51 +138,47 @@ class SQuADLightningDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.max_length = max_length
-        self.data_collator = DataCollatorForSeq2Seq(
-            self.tokenizer, max_length=self.max_length, padding="max_length"
-        )
+        self.data_collator = DataCollatorWithPadding(self.tokenizer)
         self.collate_fn = partial(_collate_fn, data_collator=self.data_collator)
 
     def _transform(self, item):
-        context, question, answers = (
+        context, question, answer = (
             item["context"],
             item["question"],
-            list(map(lambda x: x["text"][0], item["answers"])),
+            item["answers"]["text"][0],
         )
-        input_text = [
-            a + self.tokenizer.cls_token + c for a, c in zip(answers, context)
-        ]
-        context = self.tokenizer(input_text, truncation=True, padding="max_length")
-        question = self.tokenizer(question, truncation=False, padding="max_length")
+        input_text = answer + self.tokenizer.cls_token + context
+        context = self.tokenizer(input_text, truncation=True)
+        question = self.tokenizer(question, truncation=True)
 
         output = {
-            "input_ids": context["input_ids"],
-            "attention_mask": context["attention_mask"],
-            "labels": question["input_ids"],
+            "encoder_input_ids": context["input_ids"],
+            "encoder_attention_mask": context["attention_mask"],
+            "decoder_input_ids": question["input_ids"],
             "decoder_attention_mask": question["attention_mask"],
         }
         return output
 
-    def prepare_data(self) -> None:
+    def _data_processing(self, dataset: datasets.arrow_dataset.Dataset, name: str):
+        logger.info(f"{name} data transformation...")
+        dataset = dataset.map(self._transform)
+        dataset.set_format(type="torch", columns=self.columns)
+        logger.info(f"{name} data transformation completed.")
+        return dataset
 
+    def prepare_data(self) -> None:
         logger.info("Loading SQuAD dataset...")
         self.dataset = datasets.load_dataset("squad")
 
         self.train, self.validation = self.dataset["train"], self.dataset["validation"]
         self.columns = [
-            "input_ids",
-            "attention_mask",
+            "encoder_input_ids",
+            "encoder_attention_mask",
+            "decoder_input_ids",
             "decoder_attention_mask",
-            "labels",
         ]
-
-        logger.info("Data transformation...")
-        self.train = self.train.map(self._transform, batched=True)
-        self.train.set_format(type="torch", columns=self.columns)
-
-        self.validation = self.validation.map(self._transform, batched=True)
-        self.validation.set_format(type="torch", columns=self.columns)
-        logger.info("Data transformation completed.")
+        self.train = self._data_processing(self.train, "Training")
+        self.validation = self._data_processing(self.validation, "Validation")
 
     def train_dataloader(
         self,

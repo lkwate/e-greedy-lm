@@ -34,6 +34,7 @@ DATASET_DIC = {
 @click.option("--k", type=int, default=10)
 @click.option("--epsilon", type=float, default=0.2)
 @click.option("--beta", type=float, default=0.06)
+@click.option("--add_variance", is_flag=True)
 @click.option("--variance_type", type=str, default="local")
 @click.option("--lr_factor", type=float, default=0.1)
 @click.option("--lr_patience", type=int, default=4)
@@ -57,6 +58,7 @@ def main(
     k: int,
     epsilon: float,
     beta: float,
+    add_variance: bool,
     variance_type: str,
     lr_factor: float,
     lr_patience: int,
@@ -85,8 +87,13 @@ def main(
 
     logger.info("Sequence-2-Sequence model building...")
     encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(model_name, is_decoder=True)
+    decoder = AutoModelForCausalLM.from_pretrained(
+        model_name, is_decoder=True, add_cross_attention=True
+    )
     model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
+    model.config.decoder_start_token_id = tokenizer.cls_token_id
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.vocab_size = model.config.decoder.vocab_size
 
     pl_model = RLLMLightningModule(
         model,
@@ -100,6 +107,7 @@ def main(
         lr_factor,
         lr_patience,
         optimizer_name,
+        add_variance
     )
 
     trainer_config = {

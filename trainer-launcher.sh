@@ -34,4 +34,5 @@ python3 -m core.trainer \
 		--accumulate_grad_batches 1 \
 		--save_top_k 5 \
 		--strategy $strategy \
-		--random_seed 2021
+		--random_seed 2021 \
+		--add_variance
