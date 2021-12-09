@@ -33,6 +33,7 @@ DATASET_DIC = {
 @click.option("--k", type=int, default=10)
 @click.option("--epsilon", type=float, default=0.2)
 @click.option("--beta", type=float, default=0.06)
+@click.option("--add_variance", is_flag=True)
 @click.option("--variance_type", type=str, default="local")
 @click.option("--lr_factor", type=float, default=0.1)
 @click.option("--lr_patience", type=int, default=4)
@@ -52,6 +53,7 @@ def main(
     k: int,
     epsilon: float,
     beta: float,
+    add_variance: bool,
     variance_type: str,
     lr_factor: float,
     lr_patience: int,
@@ -82,9 +84,8 @@ def main(
         data_module = pl_data_module.test_dataloader()
 
     logger.info("Sequence-2-Sequence model building...")
-    logger.info("Sequence-2-Sequence model building...")
     encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(model_name, is_decoder=True)
+    decoder = AutoModelForCausalLM.from_pretrained(model_name, is_decoder=True, add_cross_attention=True)
     model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
 
     pl_model = RLLMLightningModule.load_from_checkpoint(
@@ -100,6 +101,7 @@ def main(
         lr_factor=lr_factor,
         lr_patience=lr_patience,
         optimizer_name=optimizer_name,
+        add_variance=True
     )
     pl_model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
