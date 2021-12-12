@@ -1,7 +1,7 @@
-torch
-loguru
-black
+torch=1.8.0
+loguru==0.5.3
+black==21.6b0
 git+https://github.com/huggingface/transformers
-tqdm
-pytorch_lightning
-datasets
+tqdm==4.62.3
+pytorch_lightning=1.5.2
+datasets==1.15.1
