@@ -1,4 +1,4 @@
-torch=1.8.0
+torch==1.8.0
 loguru==0.5.3
 black==21.6b0
 git+https://github.com/huggingface/transformers
