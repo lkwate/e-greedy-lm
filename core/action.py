@@ -8,15 +8,13 @@ from utils import create_action
 @click.argument("output_file", type=click.Path())
 @click.option("--k", type=int, default=10)
 @click.option("--factor", type=int, default=10)
-@click.option("--name", type=str, default="name")
+@click.option("--name", is_flag=True)
 def main(
     model_name: str, output_file: str, k: int = 10, factor: int = 10, name: str = "name"
 ):
     embedding = AutoModel.from_pretrained(model_name).embeddings.word_embeddings.weight
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    create_action(
-        embedding, tokenizer, output_file, k=k, factor=factor, name=(name == "name")
-    )
+    create_action(embedding, tokenizer, output_file, k=k, factor=factor, name=name)
 
 
 if __name__ == "__main__":

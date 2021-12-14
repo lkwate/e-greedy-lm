@@ -1,4 +1,11 @@
-from transformers import AutoTokenizer
+from transformers import (
+    AutoTokenizer,
+    AutoModel,
+    T5Tokenizer,
+    T5ForConditionalGeneration,
+    AutoModelForCausalLM,
+    EncoderDecoderModel,
+)
 import pandas as pd
 import torch
 import torch.optim as optim
@@ -30,10 +37,14 @@ def create_action(
             tokenizer.decode(token).lower().strip(): 1 for token in related_tokens
         }
         if name:
-            related_tokens = [token for token in list(related_tokens.keys())[:k]]
+            related_tokens = [
+                token for token in list(related_tokens.keys())[:k] if token != ""
+            ]
         else:
             related_tokens = [
-                tokenizer.encode(token)[1] for token in list(related_tokens.keys())[:k]
+                tokenizer.encode(token)[-2]
+                for token in list(related_tokens.keys())[:k]
+                if token != ""
             ]
         out.append((str(related_tokens)))
 
@@ -113,3 +124,23 @@ def action_table_from_file(input_file: str, k: int) -> torch.LongTensor:
             row = [row[0]] * (k - len(row)) + row
         table[idx] = torch.LongTensor(row)
     return table
+
+
+def build_model(model_name, full_model):
+    model, tokenizer = None, None
+    if full_model:
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        model = T5ForConditionalGeneration.from_pretrained(model_name)
+        tokenizer.cls_token = tokenizer.eos_token
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        encoder = AutoModel.from_pretrained(model_name)
+        decoder = AutoModelForCausalLM.from_pretrained(
+            model_name, is_decoder=True, add_cross_attention=True
+        )
+        model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
+        model.config.decoder_start_token_id = tokenizer.cls_token_id
+        model.config.pad_token_id = tokenizer.pad_token_id
+        model.config.vocab_size = model.config.decoder.vocab_size
+
+    return model, tokenizer
