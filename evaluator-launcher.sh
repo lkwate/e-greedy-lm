@@ -12,7 +12,7 @@ dataset_name="squad"
 
 #log_dir="../log_files"
 log_dir="log_files"
-checkpoint_path=${log_dir}/epoch=1-val_loss=13.7270.ckpt
+checkpoint_path=${log_dir}/epoch=6-val_loss=3.8788.ckpt
 output_file=${log_dir}/"eval.txt"
 split="eval"
 limit_batches=-1

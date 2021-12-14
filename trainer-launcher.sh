@@ -1,10 +1,10 @@
 #!/bin/bash
 
-model_name="roberta-base"
-action_table_file="core/local_actions/local_action_index.csv"
+model_name="t5-small"
+action_table_file="core/local_actions/local_action_index_t5.csv"
 #log_dir="../log_files"
 log_dir="log_files"
-batch_size=32
+batch_size=4
 #strategy="ddp_spawn"
 strategy="ddp"
 ### Question Generation
@@ -35,4 +35,5 @@ python3 -m core.trainer \
 		--save_top_k 5 \
 		--strategy $strategy \
 		--random_seed 2021 \
-		--add_variance
+		--add_variance \
+		--full_model
