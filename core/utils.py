@@ -65,14 +65,12 @@ def epsilon_greedy_transform_label(
 
     special_token_mask = (
         (labels != tokenizer.cls_token_id)
-        | (labels != tokenizer.sep_token_id)
-        | (labels != -100)
+        & (labels != tokenizer.sep_token_id)
+        & (labels != -100)
     )
     mask = probability_matrix & special_token_mask
-
     replace_indices = mask.nonzero(as_tuple=True)
     replace_token_indices = labels[replace_indices]
-
     next_action_indices = (
         torch.randint(0, k, replace_token_indices.shape).to(labels.device).long()
     )
@@ -132,6 +130,7 @@ def build_model(model_name, full_model):
         tokenizer = T5Tokenizer.from_pretrained(model_name)
         model = T5ForConditionalGeneration.from_pretrained(model_name)
         tokenizer.cls_token = tokenizer.eos_token
+        tokenizer.sep_token = tokenizer.eos_token
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         encoder = AutoModel.from_pretrained(model_name)
