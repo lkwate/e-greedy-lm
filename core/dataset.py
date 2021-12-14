@@ -8,7 +8,7 @@ from typing import List, Union, Dict
 from functools import partial
 
 
-def _collate_fn(features, data_collator: DataCollatorWithPadding):
+def _collate_fn(features, tokenizer: AutoTokenizer):
     encoder_features = [
         {
             key[len("encoder_") :]: value
@@ -26,11 +26,15 @@ def _collate_fn(features, data_collator: DataCollatorWithPadding):
         for feat in features
     ]
 
-    encoder_features = data_collator(encoder_features)
-    decoder_features = data_collator(decoder_features)
+    encoder_features = tokenizer.pad(
+        encoder_features, padding=True, return_tensors="pt"
+    )
+    decoder_features = tokenizer.pad(
+        decoder_features, padding=True, return_tensors="pt"
+    )
 
     decoder_features["input_ids"] = torch.where(
-        decoder_features["input_ids"] == data_collator.tokenizer.pad_token_id,
+        decoder_features["input_ids"] == tokenizer.pad_token_id,
         -100,
         decoder_features["input_ids"],
     )
@@ -54,8 +58,7 @@ class MultiNewsLightningDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.max_length = max_length
-        self.data_collator = DataCollatorWithPadding(self.tokenizer)
-        self.collate_fn = partial(_collate_fn, data_collator=self.data_collator)
+        self.collate_fn = partial(_collate_fn, tokenizer=self.tokenizer)
 
     def prepare_data(self):
         logger.info("Multi_news dataset loading....")
@@ -138,8 +141,8 @@ class SQuADLightningDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.max_length = max_length
-        self.data_collator = DataCollatorWithPadding(self.tokenizer)
-        self.collate_fn = partial(_collate_fn, data_collator=self.data_collator)
+        self.collate_fn = partial(_collate_fn, tokenizer=self.tokenizer)
+        self.prefix = "question: "
 
     def _transform(self, item):
         context, question, answer = (
@@ -147,7 +150,7 @@ class SQuADLightningDataModule(pl.LightningDataModule):
             item["question"],
             item["answers"]["text"][0],
         )
-        input_text = answer + self.tokenizer.cls_token + context
+        input_text = self.prefix + answer + self.tokenizer.cls_token + context
         context = self.tokenizer(input_text, truncation=True)
         question = self.tokenizer(question, truncation=True)
 
