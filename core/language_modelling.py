@@ -97,7 +97,7 @@ class RLLMLightningModule(pl.LightningModule):
             input_ids, attention_mask, decoder_attention_mask, labels
         )
         output["loss"] = loss
-        self.log_dict(output, prog_bar=True)
+        self.log_dict(output)
 
         return output
 
