@@ -85,7 +85,9 @@ def main(
 
     logger.info("Sequence-2-Sequence model building...")
     encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(model_name, is_decoder=True, add_cross_attention=True)
+    decoder = AutoModelForCausalLM.from_pretrained(
+        model_name, is_decoder=True, add_cross_attention=True
+    )
     model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
 
     pl_model = RLLMLightningModule.load_from_checkpoint(
@@ -101,7 +103,7 @@ def main(
         lr_factor=lr_factor,
         lr_patience=lr_patience,
         optimizer_name=optimizer_name,
-        add_variance=True
+        add_variance=True,
     )
     pl_model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -114,7 +116,7 @@ def main(
             n_batches = 0
             for batch in tqdm.tqdm(data_module, desc="Save in %s ..." % output_file):
                 # batch["input_ids"], batch["attention_mask"], batch["labels"], batch["decoder_attention_mask"]
-                x = batch["input_ids"].to(device)
+                x = batch["encoder_input_ids"].to(device)
                 y = pl_model.generate(x)
                 for x_i, y_i in zip(x, y):
                     of.writelines(

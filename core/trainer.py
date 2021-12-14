@@ -1,16 +1,10 @@
 import pytorch_lightning as pl
-from transformers import (
-    EncoderDecoderModel,
-    AutoTokenizer,
-    AutoModel,
-    AutoModelForCausalLM,
-)
 import click
 from loguru import logger
 import torch
 from .language_modelling import RLLMLightningModule
 from .dataset import *
-from .utils import action_table_from_file
+from .utils import action_table_from_file, build_model
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import os
 
@@ -46,6 +40,7 @@ DATASET_DIC = {
 @click.option("--save_top_k", type=int, default=5)
 @click.option("--strategy", type=str, default="ddp", help="ddp, ddp_spawn ...")
 @click.option("--random_seed", type=int, default=2021)
+@click.option("--full_model", is_flag=True)
 def main(
     model_name: str,
     action_table_file: str,
@@ -70,30 +65,23 @@ def main(
     save_top_k: int,
     strategy: str,
     random_seed: int,
+    full_model: bool,
 ):
     pl.seed_everything(random_seed, workers=True)
 
     logger.info("Actions table creation...")
     action_table = action_table_from_file(action_table_file, k)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     if dataset_name not in DATASET_DIC:
         logger.error(f"Dataset {dataset_name} not available")
+
+    logger.info("Sequence-2-Sequence model building...")
+    model, tokenizer = build_model(model_name, full_model)
 
     logger.info(f"{dataset_name} lightning data module creation...")
     pl_data_module = DATASET_DIC[dataset_name](
         tokenizer, batch_size, num_workers, max_length
     )
-
-    logger.info("Sequence-2-Sequence model building...")
-    encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(
-        model_name, is_decoder=True, add_cross_attention=True
-    )
-    model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
-    model.config.decoder_start_token_id = tokenizer.cls_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
-    model.config.vocab_size = model.config.decoder.vocab_size
 
     pl_model = RLLMLightningModule(
         model,
@@ -107,7 +95,7 @@ def main(
         lr_factor,
         lr_patience,
         optimizer_name,
-        add_variance
+        add_variance,
     )
 
     trainer_config = {
