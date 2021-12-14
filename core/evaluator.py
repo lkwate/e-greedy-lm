@@ -10,7 +10,7 @@ from loguru import logger
 import torch
 from .language_modelling import RLLMLightningModule
 from .dataset import *
-from .utils import action_table_from_file
+from .utils import action_table_from_file, build_model
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import os
 import tqdm
@@ -42,6 +42,7 @@ DATASET_DIC = {
 @click.option("--output_file", type=click.Path(exists=False))
 @click.option("--split", type=click.Choice(["train", "eval", "test"]), default="eval")
 @click.option("--limit_batches", type=int, default=-1)
+@click.option("--full_model", is_flag=True)
 def main(
     model_name: str,
     action_table_file: str,
@@ -62,14 +63,17 @@ def main(
     output_file: str,
     split: str,
     limit_batches: int,
+    full_model: bool
 ):
 
     logger.info("Actions table creation...")
     action_table = action_table_from_file(action_table_file, k)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
+    
     if dataset_name not in DATASET_DIC:
         logger.error(f"Dataset {dataset_name} not available")
+
+    logger.info("Sequence-2-Sequence model building...")
+    model, tokenizer = build_model(model_name, full_model)
 
     logger.info(f"{dataset_name} lightning data module creation...")
     pl_data_module = DATASET_DIC[dataset_name](
@@ -82,14 +86,7 @@ def main(
         data_module = pl_data_module.val_dataloader()
     elif split == "test":
         data_module = pl_data_module.test_dataloader()
-
-    logger.info("Sequence-2-Sequence model building...")
-    encoder = AutoModel.from_pretrained(model_name)
-    decoder = AutoModelForCausalLM.from_pretrained(
-        model_name, is_decoder=True, add_cross_attention=True
-    )
-    model = EncoderDecoderModel(encoder=encoder, decoder=decoder)
-
+        
     pl_model = RLLMLightningModule.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
         model=model,

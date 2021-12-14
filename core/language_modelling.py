@@ -57,7 +57,7 @@ class RLLMLightningModule(pl.LightningModule):
 
     def _add_uid_variance_fn(self, loss, logits, labels, variance_type):
         uid_variance = uid_variance_fn(logits, labels, variance_type=variance_type)
-        output = {"likelihood": loss, "uid_variance": uid_variance}
+        output = {"likelihood": loss.detach(), "uid_variance": uid_variance.detach()}
         loss = loss + self.beta * uid_variance
 
         return loss, output
