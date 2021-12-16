@@ -67,7 +67,7 @@ def main(
     strategy: str,
     random_seed: int,
     full_model: bool,
-    xla: bool
+    xla: bool,
 ):
     pl.seed_everything(random_seed, workers=True)
 
