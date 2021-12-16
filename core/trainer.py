@@ -41,6 +41,7 @@ DATASET_DIC = {
 @click.option("--strategy", type=str, default="ddp", help="ddp, ddp_spawn ...")
 @click.option("--random_seed", type=int, default=2021)
 @click.option("--full_model", is_flag=True)
+@click.option("--xla", is_flag=True)
 def main(
     model_name: str,
     action_table_file: str,
@@ -66,6 +67,7 @@ def main(
     strategy: str,
     random_seed: int,
     full_model: bool,
+    xla: bool
 ):
     pl.seed_everything(random_seed, workers=True)
 
@@ -105,7 +107,9 @@ def main(
         "accumulate_grad_batches": accumulate_grad_batches,
         "strategy": strategy,
     }
-    if torch.cuda.is_available():
+    if xla:
+        trainer_config["tpu_cores"] = 8
+    elif torch.cuda.is_available():
         trainer_config["gpus"] = -1
 
     early_stopping_callback = EarlyStopping(
