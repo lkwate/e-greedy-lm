@@ -63,12 +63,12 @@ def main(
     output_file: str,
     split: str,
     limit_batches: int,
-    full_model: bool
+    full_model: bool,
 ):
 
     logger.info("Actions table creation...")
     action_table = action_table_from_file(action_table_file, k)
-    
+
     if dataset_name not in DATASET_DIC:
         logger.error(f"Dataset {dataset_name} not available")
 
@@ -86,7 +86,7 @@ def main(
         data_module = pl_data_module.val_dataloader()
     elif split == "test":
         data_module = pl_data_module.test_dataloader()
-        
+
     pl_model = RLLMLightningModule.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
         model=model,
@@ -119,13 +119,9 @@ def main(
                     of.writelines(
                         [
                             "input : %s\n"
-                            % tokenizer.convert_tokens_to_string(
-                                tokenizer.convert_ids_to_tokens(x_i)
-                            ),
+                            % tokenizer.decode(x_i, skip_special_tokens=True),
                             "output : %s\n\n"
-                            % tokenizer.convert_tokens_to_string(
-                                tokenizer.convert_ids_to_tokens(y_i)
-                            ),
+                            % tokenizer.decode(y_i, skip_special_tokens=True),
                         ]
                     )
                 n_batches += 1
